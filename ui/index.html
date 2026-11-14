@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MehdiDNSFinder</title>
+<link rel="icon" href="/favicon.ico">
+<style>
+@font-face{font-family:"Vazirmatn";src:url("/fonts/vazirmatn.woff2") format("woff2");font-weight:100 900;font-display:block}
+:root{
+  --bg:#0d1117; --panel:#151b24; --panel2:#1b232f; --line:#27313f;
+  --text:#e6edf3; --mut:#8b98a9; --acc:#f0b429;
+  --ok:#3ddc97; --warn:#f0b429; --bad:#ff6b6b; --dim:#6b778a;
+  --mono: ui-monospace,"Cascadia Mono",Consolas,monospace;
+  --sans: "Vazirmatn",Tahoma,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{--bg:#f4f1ea;--panel:#fffdf8;--panel2:#f0ece2;--line:#ddd6c5;--text:#1f2630;--mut:#6a7280;--acc:#b36b00;--ok:#0f8f5b;--warn:#b36b00;--bad:#c53b3b;--dim:#8a8f99}
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+.wrap{max-width:1080px;margin:0 auto;padding:22px 20px 40px}
+header{display:flex;align-items:baseline;gap:12px;margin-bottom:18px}
+h1{margin:0;font-size:26px;font-weight:800;letter-spacing:-.3px}
+h1 b{color:var(--acc)}
+header span{color:var(--mut)}
+.bar{display:flex;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.bar input{flex:1;background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);
+  padding:12px 14px;font:inherit;font-family:var(--mono);font-size:15px;direction:ltr;text-align:left;outline:none}
+.bar input:focus{border-color:var(--acc)}
+button,input{font-family:var(--sans)}
+button{font:inherit;font-family:var(--sans);cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:10px 16px}
+button:hover{border-color:var(--acc)}
+button.go{background:var(--acc);color:#16120a;border-color:var(--acc);font-weight:700;padding:10px 26px}
+button.go:disabled{opacity:.55;cursor:default}
+.prog{height:3px;background:var(--line);border-radius:3px;margin:12px 0 14px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--acc);transition:width .2s}
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.stat small{color:var(--mut);display:block}
+.stat strong{font-size:22px;font-family:var(--mono)}
+.tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px}
+.tabs{display:flex;gap:6px}
+.tab{padding:6px 14px;border-radius:999px;font-size:13px}
+.tab.on{background:var(--acc);color:#16120a;border-color:var(--acc);font-weight:700}
+.sp{flex:1}
+table{width:100%;border-collapse:collapse;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+th{background:var(--panel2);color:var(--mut);font-weight:600;text-align:right;padding:10px 12px;font-size:12px}
+td{padding:9px 12px;border-top:1px solid var(--line);vertical-align:middle}
+.ip{font-family:var(--mono);direction:ltr;text-align:left;display:inline-block}
+.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:700;white-space:nowrap}
+.s-ok{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.s-warn{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.s-noconn,.s-blocked,.s-nxdomain{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.s-down{background:color-mix(in srgb,var(--dim) 20%,transparent);color:var(--dim)}
+.g{font-size:11px;color:var(--mut);border:1px solid var(--line);border-radius:4px;padding:1px 6px;margin-inline-start:6px}
+.msg{color:var(--mut);font-size:12px}
+.cp{padding:3px 9px;font-size:12px;margin-inline-start:8px}
+.empty{padding:40px;text-align:center;color:var(--mut)}
+.add{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap;color:var(--mut)}
+.add input{background:var(--panel2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:var(--mono);direction:ltr;width:170px}
+.note{margin-top:18px;color:var(--mut);font-size:12px;line-height:1.9}
+tr.new{animation:fl .6s}
+@keyframes fl{from{background:color-mix(in srgb,var(--acc) 25%,transparent)}to{background:transparent}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><img src="/icon256.png" width="40" height="40" alt="" style="align-self:center;border-radius:9px"><h1 dir="ltr">Mehdi<b>DNSFinder</b></h1><span>بررسی دسترسی یک سایت یا سرویس از طریق DNSهای ایران و جهان</span></header>
+
+  <div class="bar">
+    <input id="target" placeholder="مثلاً: https://www.youtube.com یا chat.openai.com" spellcheck="false" autofocus>
+    <button class="go" id="go">شروع بررسی</button>
+  </div>
+  <div class="prog"><i id="pg"></i></div>
+
+  <div class="stats">
+    <div class="stat"><small>بررسی‌شده</small><strong id="n-done">0</strong></div>
+    <div class="stat"><small>دسترسی دارد</small><strong id="n-ok" style="color:var(--ok)">0</strong></div>
+    <div class="stat"><small>هشدار</small><strong id="n-warn" style="color:var(--warn)">0</strong></div>
+    <div class="stat"><small>بسته / بدون اتصال</small><strong id="n-bad" style="color:var(--bad)">0</strong></div>
+    <div class="stat"><small>سرور بی‌پاسخ</small><strong id="n-down" style="color:var(--dim)">0</strong></div>
+  </div>
+
+  <div class="tools">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-f="all">همه</button>
+      <button class="tab" data-f="ok">فقط موفق</button>
+      <button class="tab" data-f="iran">ایران</button>
+      <button class="tab" data-f="world">جهان</button>
+    </div>
+    <span class="sp"></span>
+    <button id="csv">خروجی CSV</button>
+  </div>
+
+  <table>
+    <thead><tr><th>سرویس DNS</th><th>آدرس DNS</th><th>وضعیت</th><th>آی‌پی دریافتی</th><th>DNS</th><th>اتصال</th></tr></thead>
+    <tbody id="rows"><tr><td colspan="6" class="empty">آدرس را وارد کنید و «شروع بررسی» را بزنید.</td></tr></tbody>
+  </table>
+
+  <div class="add">
+    <span>افزودن DNS دلخواه:</span>
+    <input id="c-name" placeholder="نام (اختیاری)" style="direction:rtl;text-align:right;font-family:var(--sans)">
+    <input id="c-ip" placeholder="1.2.3.4">
+    <button id="c-add">افزودن</button>
+    <span id="c-count"></span>
+  </div>
+
+  <p class="note">
+    «دسترسی دارد» یعنی DNS آدرس درست داد و اتصال واقعی (TCP/TLS) به آن آی‌پی با گواهی معتبر برقرار شد.
+    نتیجه به اینترنت و اپراتور شما بستگی دارد؛ بعضی DNSهای ایرانی (مثل رادار و ۴۰۳) فقط داخل ایران کار می‌کنند.
+    برای استفاده، آدرس DNS مورد نظر را در تنظیمات شبکه ویندوز (IPv4 ‏→ Preferred DNS) وارد کنید.
+  </p>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const ORDER = {ok:0,warn:1,noconn:2,blocked:3,nxdomain:4,down:5};
+const LABEL = {ok:"دسترسی دارد",warn:"هشدار گواهی",noconn:"اتصال ناموفق",blocked:"مسدود",nxdomain:"یافت نشد",down:"DNS بی‌پاسخ"};
+let servers = [], results = [], filter = "all", running = false;
+let custom = [];
+try{ custom = JSON.parse(localStorage.getItem("customDNS")||"[]"); }catch(e){}
+
+async function load(){
+  servers = await (await fetch("/api/servers")).json();
+  $("#c-count").textContent = custom.length ? `(${custom.length} مورد ذخیره شده)` : "";
+  const t = localStorage.getItem("lastTarget"); if(t) $("#target").value = t;
+}
+setInterval(()=>fetch("/api/ping").catch(()=>{}), 3000); fetch("/api/ping");
+
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+function render(newIp){
+  const list = results.filter(r=>{
+    if(filter==="ok") return r.status==="ok";
+    if(filter==="iran"||filter==="world") return r.group===filter;
+    return true;
+  }).sort((a,b)=> ORDER[a.status]-ORDER[b.status] || a.dnsMs-b.dnsMs);
+  if(!list.length){ $("#rows").innerHTML = `<tr><td colspan="6" class="empty">${running?"در حال بررسی…":"موردی برای نمایش نیست."}</td></tr>`; return; }
+  $("#rows").innerHTML = list.map(r=>`
+    <tr class="${r.dns===newIp?'new':''}">
+      <td>${esc(r.name)}<span class="g">${r.group==="iran"?"ایران":r.group==="custom"?"دلخواه":"جهان"}</span></td>
+      <td><span class="ip">${r.dns}</span><button class="cp" data-ip="${r.dns}">کپی</button></td>
+      <td><span class="chip s-${r.status}">${LABEL[r.status]}</span><div class="msg">${esc(r.message)}</div></td>
+      <td><span class="ip">${r.ips.slice(0,3).join("<br>")||"—"}</span></td>
+      <td class="ip">${r.status==="down"?"—":r.dnsMs+" ms"}</td>
+      <td class="ip">${r.connMs?r.connMs+" ms":"—"}</td>
+    </tr>`).join("");
+}
+
+function stats(total){
+  const c = k => results.filter(r=>r.status===k).length;
+  $("#n-done").textContent = `${results.length}/${total}`;
+  $("#n-ok").textContent = c("ok");
+  $("#n-warn").textContent = c("warn");
+  $("#n-bad").textContent = c("noconn")+c("blocked")+c("nxdomain");
+  $("#n-down").textContent = c("down");
+  $("#pg").style.width = (results.length/total*100)+"%";
+}
+
+async function start(){
+  if(running) return;
+  const target = $("#target").value.trim();
+  if(!target){ $("#target").focus(); return; }
+  localStorage.setItem("lastTarget", target);
+  const all = servers.concat(custom.map(c=>({...c,group:"custom"})));
+  results = []; running = true; stats(all.length);
+  $("#go").disabled = true; $("#go").textContent = "در حال بررسی…"; render();
+  try{
+    const resp = await fetch("/api/check",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({target,servers:all})});
+    if(!resp.ok){ alert(await resp.text()); throw 0; }
+    const reader = resp.body.getReader(), dec = new TextDecoder(); let buf="";
+    while(true){
+      const {done,value} = await reader.read(); if(done) break;
+      buf += dec.decode(value,{stream:true});
+      let i; while((i=buf.indexOf("\n"))>=0){
+        const line = buf.slice(0,i).trim(); buf = buf.slice(i+1);
+        if(line){ const r = JSON.parse(line); results.push(r); stats(all.length); render(r.dns); }
+      }
+    }
+  }catch(e){}
+  running = false; $("#go").disabled = false; $("#go").textContent = "شروع بررسی"; render();
+}
+
+$("#go").onclick = start;
+$("#target").addEventListener("keydown",e=>{ if(e.key==="Enter") start(); });
+$("#tabs").onclick = e=>{ const b=e.target.closest(".tab"); if(!b) return;
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on")); b.classList.add("on");
+  filter=b.dataset.f; render(); };
+$("#rows").onclick = e=>{ const b=e.target.closest(".cp"); if(!b) return;
+  navigator.clipboard.writeText(b.dataset.ip); b.textContent="✓"; setTimeout(()=>b.textContent="کپی",900); };
+$("#c-add").onclick = ()=>{
+  const ip = $("#c-ip").value.trim();
+  if(!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)){ alert("آدرس IPv4 معتبر وارد کنید"); return; }
+  custom.push({name:$("#c-name").value.trim()||("DNS "+ip), ip});
+  localStorage.setItem("customDNS",JSON.stringify(custom));
+  $("#c-ip").value=""; $("#c-name").value=""; $("#c-count").textContent=`(${custom.length} مورد ذخیره شده)`;
+};
+$("#csv").onclick = ()=>{
+  if(!results.length) return;
+  const rows = [["name","dns","group","status","message","ips","dns_ms","conn_ms"]].concat(
+    results.map(r=>[r.name,r.dns,r.group,r.status,r.message,r.ips.join(" "),r.dnsMs,r.connMs]));
+  const csv = "\ufeff"+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(",")).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+  a.download = "dns-results.csv"; a.click();
+};
+load();
+</script>
+</body>
+</html>
